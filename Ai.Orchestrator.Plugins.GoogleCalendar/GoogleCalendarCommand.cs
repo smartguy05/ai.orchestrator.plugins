@@ -1,10 +1,12 @@
 ﻿using System.Globalization;
+using System.Reflection;
 using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Services;
+using Google.Apis.Util.Store;
 
 namespace Ai.Orchestrator.Plugins.GoogleCalendar;
 
@@ -35,22 +37,34 @@ public class GoogleCalendarCommand : ICommand
 
     private async Task<CalendarService> GetCalendarService(ServiceConfig config)
     {
-        // Initialize Google Calendar Service
-        // var credential = GoogleCredential.FromFile(config.CredentialsFileLocation)
-        //     .CreateScoped(CalendarService.Scope.Calendar);
-        var credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-            new ClientSecrets
-            {
-                ClientId = config.Credentials.ClientId,
-                ClientSecret = config.Credentials.ClientSecret
-            }, new[] { CalendarService.Scope.Calendar },
-            config.Credentials.GoogleUser,
-            CancellationToken.None);
-        
+        var directory = $"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}/GoogleCalendar";
+        var files = Directory.GetFiles(directory, "*.TokenResponse-user");
+        ICredential credential;
+
+        if (files.Any() && files.Length == 1)
+        {
+            var fileName = files[0];
+            credential = GoogleCredential.FromFile($"{directory}/{fileName}")
+                .CreateScoped(CalendarService.Scope.Calendar);    
+        }
+        else
+        {
+            credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
+                new ClientSecrets
+                {
+                    ClientId = config.Credentials.ClientId,
+                    ClientSecret = config.Credentials.ClientSecret
+                }, new[] { CalendarService.Scope.Calendar },
+                config.Credentials.GoogleUser,
+                CancellationToken.None,
+                new FileDataStore(directory, true),
+                new LocalServerCodeReceiver(config.LocalApiUrl));
+        }
+
         return new CalendarService(new BaseClientService.Initializer()
         {
             HttpClientInitializer = credential,
-            ApplicationName = "Ai.Orchestrator Google Calendar Plugin",
+            ApplicationName = "Ai Orchestrator - Google Calendar Plugin",
         });
     }
 
@@ -124,10 +138,9 @@ public class GoogleCalendarCommand : ICommand
         var calendarId = !string.IsNullOrWhiteSpace(serviceRequest.CalendarId) 
             ? serviceRequest.CalendarId
             : "primary";
-        var dateString = serviceRequest.Date.ToString(CultureInfo.InvariantCulture);
         
         // Parse the input date
-        if (!DateTime.TryParseExact(dateString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (!DateTime.TryParseExact(serviceRequest.Date.ToString("yyyy-MM-dd"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
             throw new Exception("Invalid date format. Use 'yyyy-MM-dd'.");
         }

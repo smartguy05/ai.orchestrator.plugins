@@ -39,27 +39,35 @@ public class GoogleCalendarCommand : ICommand
     {
         var directory = $"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}/GoogleCalendar";
         var files = Directory.GetFiles(directory, "*.TokenResponse-user");
-        ICredential credential;
+        ICredential credential = null;
 
-        if (files.Any() && files.Length == 1)
+        if (files.Any())
         {
-            var fileName = files[0];
-            credential = GoogleCredential.FromFile($"{directory}/{fileName}")
-                .CreateScoped(CalendarService.Scope.Calendar);    
-        }
-        else
-        {
-            credential = await GoogleWebAuthorizationBroker.AuthorizeAsync(
-                new ClientSecrets
+            if (files.Length == 1)
+            {
+                var fileName = files[0];
+                credential = GoogleCredential.FromFile($"{directory}/{fileName}")
+                    .CreateScoped(CalendarService.Scope.Calendar);   
+            }
+            else
+            {
+                foreach (var file in files)
                 {
-                    ClientId = config.Credentials.ClientId,
-                    ClientSecret = config.Credentials.ClientSecret
-                }, new[] { CalendarService.Scope.Calendar },
-                config.Credentials.GoogleUser,
-                CancellationToken.None,
-                new FileDataStore(directory, true),
-                new LocalServerCodeReceiver(config.LocalApiUrl));
+                    File.Delete(file);
+                }
+            }
         }
+        
+        credential ??= await GoogleWebAuthorizationBroker.AuthorizeAsync(
+            new ClientSecrets
+            {
+                ClientId = config.Credentials.ClientId,
+                ClientSecret = config.Credentials.ClientSecret
+            }, new[] { CalendarService.Scope.Calendar },
+            config.Credentials.GoogleUser,
+            CancellationToken.None,
+            new FileDataStore(directory, true),
+            new LocalServerCodeReceiver(config.LocalApiUrl));
 
         return new CalendarService(new BaseClientService.Initializer()
         {

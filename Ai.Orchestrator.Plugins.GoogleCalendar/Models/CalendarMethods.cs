@@ -2,10 +2,10 @@
 
 public static class CalendarMethods
 {
-    public const string Events = "events";
-    public const string Event = "event";
-    public const string EditEvent = "event-edit";
-    public const string Day = "day";
-    public const string Calendars = "calendars";
-    public const string Calendar = "calendar";
+    public const string Events = "get_calendar_events";
+    public const string Event = "get_calendar_event";
+    public const string EditEvent = "edit_calendar_event";
+    public const string Day = "get_calendar_events_for_day";
+    public const string Calendars = "get_calendars";
+    public const string Calendar = "get_calendar";
 }

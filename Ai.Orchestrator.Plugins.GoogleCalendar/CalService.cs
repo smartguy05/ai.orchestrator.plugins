@@ -1,5 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
+using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Plugins.GoogleCalendar.Exceptions;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
@@ -83,11 +85,21 @@ public class CalService
         }
     }
 
-    public async Task<object> GetCalendars()
+    public async Task<object> GetCalendars(ServiceRequest serviceRequest)
     {
         try
         {
-            return await _calendarService.CalendarList.List().ExecuteAsync();
+            var result = await _calendarService.CalendarList.List().ExecuteAsync();
+            if (!string.IsNullOrWhiteSpace(serviceRequest.RequestingService))
+            {
+                return new OrchestratorRequest
+                {
+                    Service = serviceRequest.RequestingService,
+                    ToolCallId = serviceRequest.ToolCallId
+                };
+            }
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -161,16 +173,48 @@ public class CalService
             throw new Exception("Missing parameter: date.");
         }
 
-        var calendarId = !string.IsNullOrWhiteSpace(serviceRequest.CalendarId) 
-            ? serviceRequest.CalendarId
-            : "primary";
-        
         // Parse the input date
         if (!DateTime.TryParseExact(serviceRequest.Date.ToString("yyyy-MM-dd"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
             throw new Exception("Invalid date format. Use 'yyyy-MM-dd'.");
         }
 
+        if (!string.IsNullOrWhiteSpace(serviceRequest.CalendarId))
+        {
+            return await GetCalendar(serviceRequest.CalendarId, serviceRequest.Date);
+        }
+        
+        var calendarList = await _calendarService.CalendarList.List().ExecuteAsync();
+        List<object> calendarItems = new();
+        if (calendarList.Items.Any())
+        {
+            for (var i = 0; i < calendarList.Items.Count; i++)
+            {
+                try
+                {
+                    var items = (await GetCalendar(calendarList.Items[i].Id, date.Date)).ToList();
+                    if (items.Any())
+                    {
+                        calendarItems.AddRange(items);
+                    }
+                }
+                catch (EventNotFoundException e)
+                {
+                    // no-op
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+            return calendarItems;
+        }
+
+        return null;
+    }
+
+    private async Task<IEnumerable<object>> GetCalendar(string calendarId, DateTime date)
+    {
         try
         {
             // Set the timeMin and timeMax to filter events for the specific day
@@ -182,10 +226,6 @@ public class CalService
             request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
 
             var events = await request.ExecuteAsync();
-            if (events.Items == null || events.Items.Count == 0)
-            {
-                throw new Exception("No events found for the specified day.");
-            }
 
             // Format the event list
             return events.Items.Select(e => new

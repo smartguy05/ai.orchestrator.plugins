@@ -45,27 +45,7 @@ public class GoogleCalendarCommand : ICommand
 
         if (!string.IsNullOrWhiteSpace(request.ToolCallId))
         {
-            if (request.Messages is not null && request.Messages.Any())
-            {
-                var chatMessages = request.Messages.ToList();
-                if (chatMessages.Any())
-                {
-                    chatMessages.Add(new ChatMessageHistory
-                    {
-                        Role = ChatMessageTypes.Tool,
-                        Content = JsonSerializer.Serialize(result),
-                        ToolCallId = request.ToolCallId
-                    });
-                    return new OrchestratorRequest
-                    {
-                        Service = serviceRequest.RequestingService,
-                        ServiceRequest = null,
-                        ToolCallId = request.ToolCallId,
-                        ServiceFunctions = request.ServiceFunctions,
-                        Messages = chatMessages
-                    };
-                }
-            }
+            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
         }
 
         return result;

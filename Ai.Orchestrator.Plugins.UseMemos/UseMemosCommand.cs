@@ -1,6 +1,8 @@
 ﻿using System.Net.Http.Headers;
 using Ai.Orchestrator.Common.Extensions;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
+using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.UseMemos.Models;
 
 namespace Ai.Orchestrator.Plugins.UseMemos;
@@ -13,10 +15,15 @@ public class UseMemosCommand: ICommand
     public string Name => "UseMemos";
     public string Description  => "Integration with UseMemos server";
 
-    public async Task<object> Execute(object request, string configString)
+    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.GetServiceRequest<ServiceRequest>();
+        var serviceRequest = request.ServiceRequest as ServiceRequest;
         var config = configString.ReadConfig<ServiceConfig>();
+        
+        if (serviceRequest is null)
+        {
+            throw new Exception("Unable to read usememos service request");
+        }
         
         ValidateRequestType(serviceRequest.Method);
 

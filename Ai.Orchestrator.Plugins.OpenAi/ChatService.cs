@@ -5,20 +5,32 @@ using System.Text.Json;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Plugins.OpenAi.Models;
+using StackExchange.Redis;
 
 namespace Ai.Orchestrator.Plugins.OpenAi;
 
 public class ChatService
 {
+    private const string RedisConversationSubject = "openai.plugin";
+    private readonly ConnectionMultiplexer _redisConnection;
+    
+    public ChatService(ServiceConfig config)
+    {
+        _redisConnection = ConnectionMultiplexer.Connect(config.RedisConnectionString);
+    }
+    
     public async Task<object> CompleteChat(ServiceRequest request, ServiceConfig config,
         Dictionary<string, IEnumerable<string>> serviceFunctions)
     {
+        request.ConversationId ??= Guid.NewGuid().ToString();
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.OpenAiApiKey);
 
         var tools = config.Tools.Select(s => new ToolOption("function", s.Function)).ToList();
-        var messages = request.Messages?.ToList();
-        if (messages is null || !messages.Any())
+        var cachedMessages = await GetCachedMessages(request.ConversationId);
+        var messages = cachedMessages.Concat(request.Messages ?? new List<ChatMessageHistory>()).ToList();
+
+        if (!messages.Any())
         {
             messages = new List<ChatMessageHistory>
             {
@@ -28,7 +40,8 @@ public class ChatService
         }
         else
         {
-            if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
+            messages = messages.Distinct().ToList();
+            if (!string.IsNullOrWhiteSpace(request.SystemPrompt) && messages.All(a => a.Role != "system"))
             {
                 messages.Add(new ChatMessageHistory{ Role = "system", Content = request.SystemPrompt});   
             }
@@ -73,16 +86,27 @@ public class ChatService
 
         if (!result.IsSuccessStatusCode)
         {
-            throw new Exception(JsonSerializer.Serialize(result));
+            var errorContent = await result.Content.ReadAsStringAsync();
+            throw new Exception($"HTTP Error: {result.StatusCode}\nResponse Content: {errorContent}");
         }
         
         var choice = result.Content.ReadFromJsonAsync<ChatCompletionResponse>().Result.Choices.First();
-
+        
         switch (choice.FinishReason)
         {
             case ChatFinishReasons.Stop:
             {
-                return choice;
+                var response = choice.Message.GetProperty("content").GetString(); 
+                messages.Add(new ()
+                {
+                    Role = ChatMessageTypes.Assistant,
+                    Content = response,
+                } );
+                await SaveCachedMessages(request.ConversationId, messages);
+                return new {
+                    request.ConversationId,
+                    Result = response
+                };
             }
             case ChatFinishReasons.ToolCalls:
             {
@@ -109,9 +133,11 @@ public class ChatService
                         var serviceRequest = new Dictionary<string, object>();
                         serviceRequest.Add("method", toolCall.Function.Name);
                         serviceRequest.Add("requestingService", "Ai.Orchestrator.Plugins.OpenAi");
+                        serviceRequest.Add("conversationId", request.ConversationId);
                         foreach (JsonProperty property in argumentsJson.RootElement.EnumerateObject())
                         {
-                            serviceRequest.Add(property.Name, property.Value);
+                            serviceRequest.Add(char.ToLowerInvariant(property.Name[0]) + property.Name.Substring(1)
+                                , property.Value);
                         }
                         var stringified = JsonSerializer.Serialize(serviceRequest);
                     
@@ -127,6 +153,8 @@ public class ChatService
                             Messages = messages
                         });
                     }
+                    
+                    await SaveCachedMessages(request.ConversationId, messages);
 
                     if (requests.Count == 1)
                     {
@@ -134,7 +162,6 @@ public class ChatService
                     }
 
                     return requests;
-
                 }
                 catch (Exception e)
                 {
@@ -158,5 +185,38 @@ public class ChatService
                 throw new NotImplementedException(choice.FinishReason);
             }
         }
+    }
+    
+    private async Task<List<ChatMessageHistory>> GetCachedMessages(string conversationId)
+    {
+        var database = _redisConnection.GetDatabase();
+        var cachedMessagesJson = await database.StringGetAsync($"{RedisConversationSubject}-{conversationId}");
+
+        if (cachedMessagesJson.HasValue)
+        {
+            return JsonSerializer.Deserialize<List<ChatMessageHistory>>(cachedMessagesJson);
+        }
+
+        return new List<ChatMessageHistory>();
+    }
+    
+    private async Task SaveCachedMessages(string conversationId, List<ChatMessageHistory> messages)
+    {
+        var database = _redisConnection.GetDatabase();
+        var cachedMessagesJson = await database.StringGetAsync($"{RedisConversationSubject}-{conversationId}");
+
+        if (cachedMessagesJson.HasValue)
+        {
+            await database.KeyDeleteAsync($"{RedisConversationSubject}-{conversationId}");
+        }
+
+        messages = messages.Distinct().ToList();
+        
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var messagesJson = JsonSerializer.Serialize(messages, options);
+        await database.StringSetAsync($"{RedisConversationSubject}-{conversationId}", messagesJson);
     }
 }

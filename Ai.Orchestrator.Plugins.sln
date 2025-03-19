@@ -4,8 +4,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Use
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.GoogleCalendar", "Ai.Orchestrator.Plugins.GoogleCalendar\Ai.Orchestrator.Plugins.GoogleCalendar.csproj", "{BC514EE5-78F4-4A9F-B0BA-0F46A9E971CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.OpenAi", "Ai.Orchestrator.Plugins.OpenAi\Ai.Orchestrator.Plugins.OpenAi.csproj", "{DEFECD27-5077-4E49-A75B-CFEB35852178}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,9 +18,5 @@ Global
 		{BC514EE5-78F4-4A9F-B0BA-0F46A9E971CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC514EE5-78F4-4A9F-B0BA-0F46A9E971CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC514EE5-78F4-4A9F-B0BA-0F46A9E971CF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DEFECD27-5077-4E49-A75B-CFEB35852178}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DEFECD27-5077-4E49-A75B-CFEB35852178}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DEFECD27-5077-4E49-A75B-CFEB35852178}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DEFECD27-5077-4E49-A75B-CFEB35852178}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

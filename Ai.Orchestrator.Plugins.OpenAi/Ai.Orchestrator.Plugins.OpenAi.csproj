@@ -31,6 +31,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
 	  <PackageReference Include="System.ClientModel" Version="1.2.1" />
 	</ItemGroup>
 </Project>

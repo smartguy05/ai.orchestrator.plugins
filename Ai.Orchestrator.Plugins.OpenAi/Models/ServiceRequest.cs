@@ -13,4 +13,5 @@ public record ServiceRequest: IPluginServiceRequest
     public string Model { get; set; } = "gpt-4o";
     public IEnumerable<ChatMessageHistory> Messages { get; set; }
     public double Temperature { get; set; } = 0.7;
+    public string ConversationId { get; set; }
 }

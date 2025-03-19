@@ -12,4 +12,5 @@ public record ServiceConfig: IPluginConfig
     public IEnumerable<string> ToolFunctions { get; set; }
     public string OpenAiApiKey { get; set; }
     public string OpenAiUrl { get; set; }
+    public string RedisConnectionString { get; set; }
 }

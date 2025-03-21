@@ -40,23 +40,43 @@ public class SupportChannelKbService
         
         return await response.Content.ReadFromJsonAsync<string[]>();
     }
-
-
+    
     public async Task<object> GetCollections()
     {
-        using (var httpClient = new HttpClient())
-        {
-            httpClient.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
 
-            var response = await httpClient.GetAsync($"{_config.SupportChannelKbUrl}/collections");
-            response.EnsureSuccessStatusCode();
+        var response = await httpClient.GetAsync($"{_config.SupportChannelKbUrl}/collections");
+        response.EnsureSuccessStatusCode();
 
-            var collections = await response.Content.ReadFromJsonAsync<Collection[]>();
-            return collections;
-        }
+        var collections = await response.Content.ReadFromJsonAsync<Collection[]>();
+        return collections;
     }
 
+    public async Task<object> AddCollection(ServiceRequest request)
+    {
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+
+        var requestBody = new 
+        { 
+            name = request.SupportChannel, 
+            description = request.Description 
+        };
+        
+        var response = await httpClient.PostAsJsonAsync(
+            $"{_config.SupportChannelKbUrl}/collections", 
+            requestBody
+        );
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<object>();
+    }
+
+    
     public async Task<object> HealthCheck()
     {
         using var httpClient = new HttpClient();

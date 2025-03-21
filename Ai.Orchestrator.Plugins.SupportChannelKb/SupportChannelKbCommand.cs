@@ -25,6 +25,7 @@ public class SupportChannelKbCommand : ICommand
             {
                 "search" => await service.SearchKnowledgeBase(serviceRequest),
                 "get_collections" => await service.GetCollections(),
+                "add_collection" => await service.AddCollection(serviceRequest),
                 "health_check" => await service.HealthCheck(),
                 _ => new  { Success = false, Message = $"Action '{serviceRequest.Method}' not supported" }
             };

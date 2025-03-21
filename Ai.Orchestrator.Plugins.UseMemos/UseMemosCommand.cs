@@ -9,7 +9,7 @@ namespace Ai.Orchestrator.Plugins.UseMemos;
 
 public class UseMemosCommand: ICommand
 {
-    private readonly string[] _validTypes = { "read", "edit", "add" };
+    private readonly string[] _validTypes = { "read_memos", "edit_memo", "add_memo" };
     private readonly string[] _validGetTypes = { "memos", "resources" };
     
     public string Name => "UseMemos";
@@ -17,7 +17,7 @@ public class UseMemosCommand: ICommand
 
     public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest as ServiceRequest;
+        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
         var config = configString.ReadConfig<ServiceConfig>();
         
         if (serviceRequest is null)
@@ -27,16 +27,23 @@ public class UseMemosCommand: ICommand
         
         ValidateRequestType(serviceRequest.Method);
 
+        object result;
         switch (serviceRequest.Method.ToLowerInvariant())
         {
-            case "read":
-                return await GetData(serviceRequest, config);
-            case "edit":
-                // todo: Implement edit 
+            case "read_memos":
+                result = await GetData(serviceRequest, config);
                 break;
-            case "add":
+            case "edit_memo":
+            case "add_memo":
+                default:
                 // todo: Implement add
+                result = null;
                 break;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
+        {
+            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
         }
 
         return null;

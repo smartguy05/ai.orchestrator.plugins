@@ -1,7 +1,5 @@
-﻿using System.Text.Json;
-using Ai.Orchestrator.Common.Extensions;
+﻿using Ai.Orchestrator.Common.Extensions;
 using Ai.Orchestrator.Models;
-using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;

@@ -40,7 +40,12 @@ public class GoogleCalendarCommand : ICommand
         }
         catch (Exception e)
         {
-            return null;
+            Console.Write($"Error executing action '{serviceRequest.Method}'", e);
+            return new
+            {
+                Success = false, 
+                Message = $"Error: {e.Message}"
+            };
         }
 
         if (!string.IsNullOrWhiteSpace(request.ToolCallId))

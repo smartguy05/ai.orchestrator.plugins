@@ -17,15 +17,8 @@ public class SupportChannelKbService
     {
         using var httpClient = new HttpClient();
         
-        var supportChannel = _config.Channels.FirstOrDefault(f => string.Equals(f.Name, request.SupportChannel, StringComparison.CurrentCultureIgnoreCase));
-
-        if (supportChannel is null)
-        {
-            throw new Exception($"Could not find api key for supplied support channel {request.SupportChannel}");
-        } 
-        
         httpClient.DefaultRequestHeaders.Authorization = 
-            new AuthenticationHeaderValue("Bearer", supportChannel.Key);
+            new AuthenticationHeaderValue("Bearer", request.ApiKey);
         httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
 

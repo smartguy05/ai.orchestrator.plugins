@@ -10,4 +10,6 @@ public record ServiceRequest: IPluginServiceRequest
     
     public string SearchCriteria { get; set; }
     public string SupportChannel { get; set; }
+    public string ApiKey { get; set; }
+    public string Description { get; set; }
 }

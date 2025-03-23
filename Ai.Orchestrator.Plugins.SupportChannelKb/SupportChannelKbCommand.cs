@@ -1,27 +1,20 @@
-﻿using Ai.Orchestrator.Common.Extensions;
-using Ai.Orchestrator.Models;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.SupportChannelKb.Models;
 
 namespace Ai.Orchestrator.Plugins.SupportChannelKb;
 
-public class SupportChannelKbCommand : ICommand
+public class SupportChannelKbCommand : CommandBase<ServiceRequest,ServiceConfig>
 {
-    public string Name => "Support Channel KB";
-    public string Description => "Plugin for interfacing with the Support Channel Knowledge Base API";
+    public override string Name => "Support Channel KB";
+    public override string Description => "Plugin for interfacing with the Support Channel Knowledge Base API";
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
-        var config = configString.ReadConfig<ServiceConfig>();
-        object result;
-
-        var service = new SupportChannelKbService(config);
-        
         try
         {
-            result = serviceRequest.Method.ToLower() switch
+            var service = new SupportChannelKbService(config);
+            return serviceRequest.Method.ToLower() switch
             {
                 "search" => await service.SearchKnowledgeBase(serviceRequest),
                 "get_collections" => await service.GetCollections(),
@@ -39,12 +32,5 @@ public class SupportChannelKbCommand : ICommand
                 Message = $"Error: {ex.Message}"
             };
         }
-
-        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-        {
-            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
-        }
-
-        return result;
     }
 }

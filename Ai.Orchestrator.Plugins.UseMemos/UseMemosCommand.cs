@@ -1,52 +1,32 @@
 ﻿using System.Net.Http.Headers;
-using Ai.Orchestrator.Common.Extensions;
-using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.UseMemos.Models;
 
 namespace Ai.Orchestrator.Plugins.UseMemos;
 
-public class UseMemosCommand: ICommand
+public class UseMemosCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
-    private readonly string[] _validTypes = { "read_memos", "edit_memo", "add_memo" };
+    private readonly string[] _validTypes = { "read_memos" };
     private readonly string[] _validGetTypes = { "memos", "resources" };
     
-    public string Name => "UseMemos";
-    public string Description  => "Integration with UseMemos server";
+    public override string Name => "UseMemos";
+    public override string Description  => "Integration with UseMemos server";
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
-        var config = configString.ReadConfig<ServiceConfig>();
-        
-        if (serviceRequest is null)
-        {
-            throw new Exception("Unable to read usememos service request");
-        }
-        
         ValidateRequestType(serviceRequest.Method);
 
-        object result;
         switch (serviceRequest.Method.ToLowerInvariant())
         {
             case "read_memos":
-                result = await GetData(serviceRequest, config);
-                break;
+                return await GetData(serviceRequest, config);
             case "edit_memo":
             case "add_memo":
-                default:
-                // todo: Implement add
-                result = null;
-                break;
+            default:
+                // todo: Implement
+                return null;
         }
-        
-        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-        {
-            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
-        }
-
-        return null;
     }
 
     private void ValidateRequestType(string method)

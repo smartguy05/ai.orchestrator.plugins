@@ -1,31 +1,20 @@
-﻿using Ai.Orchestrator.Common.Extensions;
-using Ai.Orchestrator.Models;
-using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 
 namespace Ai.Orchestrator.Plugins.GoogleCalendar;
 
-public class GoogleCalendarCommand : ICommand
+public class GoogleCalendarCommand : CommandBase<ServiceRequest,ServiceConfig>
 {
-    public string Name => "GoogleCalendar";
-    public string Description  => "Integration with Google Calendar";
+    public override string Name => "GoogleCalendar";
+    public override string Description  => "Integration with Google Calendar";
 
-    public async Task<object> Execute(OrchestratorRequest request, string configString, IEnumerable<ToolCall> availableToolCalls)
+    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
-        var serviceRequest = request.ServiceRequest.GetServiceRequest<ServiceRequest>();
-        var config = configString.ReadConfig<ServiceConfig>();
-
-        if (serviceRequest is null)
-        {
-            throw new Exception("Unable to read google calendar service request");
-        }
-        
-        var calendarService = new CalService(config);
-        object result;
         try
         {
-            result = serviceRequest.Method.ToLower() switch
+            var calendarService = new CalService(config);
+            return serviceRequest.Method.ToLower() switch
             {
                 CalendarMethods.Events => await calendarService.GetEvents(serviceRequest),
                 CalendarMethods.Event => await calendarService.GetEvent(serviceRequest),
@@ -45,12 +34,5 @@ public class GoogleCalendarCommand : ICommand
                 Message = $"Error: {e.Message}"
             };
         }
-
-        if (!string.IsNullOrWhiteSpace(request.ToolCallId))
-        {
-            return request.ReturnNewOrchestratorRequest(serviceRequest.RequestingService, result);
-        }
-
-        return result;
     }
 }

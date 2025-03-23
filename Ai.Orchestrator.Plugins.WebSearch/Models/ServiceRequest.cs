@@ -1,0 +1,12 @@
+﻿using Ai.Orchestrator.Models.Interfaces;
+
+namespace Ai.Orchestrator.Plugins.WebSearch.Models;
+
+public class ServiceRequest: IPluginServiceRequest
+{
+    public string Method { get; set; }
+    public string ToolCallId { get; set; }
+    public string RequestingService { get; set; }
+    public string Query { get; set; }
+    public int MaxResults { get; set; } = 5;
+}

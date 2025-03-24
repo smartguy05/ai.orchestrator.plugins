@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.Sup
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.WebSearch", "Ai.Orchestrator.Plugins.WebSearch\Ai.Orchestrator.Plugins.WebSearch.csproj", "{D02A1DA7-5BED-4EA9-8158-F05758633D39}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ai.Orchestrator.Plugins.PythonRunner", "Ai.Orchestrator.Plugins.PythonRunner\Ai.Orchestrator.Plugins.PythonRunner.csproj", "{E98295BE-EB3F-4F36-B211-B8E878E53266}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{D02A1DA7-5BED-4EA9-8158-F05758633D39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D02A1DA7-5BED-4EA9-8158-F05758633D39}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D02A1DA7-5BED-4EA9-8158-F05758633D39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E98295BE-EB3F-4F36-B211-B8E878E53266}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E98295BE-EB3F-4F36-B211-B8E878E53266}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E98295BE-EB3F-4F36-B211-B8E878E53266}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E98295BE-EB3F-4F36-B211-B8E878E53266}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

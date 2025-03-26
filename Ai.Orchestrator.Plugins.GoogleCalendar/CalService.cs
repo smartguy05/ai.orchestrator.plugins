@@ -174,14 +174,14 @@ public class CalService
         }
 
         // Parse the input date
-        if (!DateTime.TryParseExact(serviceRequest.Date.ToString("yyyy-MM-dd"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        if (!DateTime.TryParseExact(serviceRequest.Date.Value.ToString("yyyy-MM-dd"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
         {
             throw new Exception("Invalid date format. Use 'yyyy-MM-dd'.");
         }
 
         if (!string.IsNullOrWhiteSpace(serviceRequest.CalendarId))
         {
-            return await GetCalendar(serviceRequest.CalendarId, serviceRequest.Date);
+            return await GetCalendar(serviceRequest.CalendarId, serviceRequest.Date.Value);
         }
         
         var calendarList = await _calendarService.CalendarList.List().ExecuteAsync();
@@ -211,6 +211,69 @@ public class CalService
         }
 
         return null;
+    }
+
+    public async Task<object> GetEventsForDateRange(ServiceRequest serviceRequest)
+    {
+        if (serviceRequest.StartDate == null || serviceRequest.EndDate == null)
+        {
+            throw new Exception("Missing parameters: startDate and endDate are required.");
+        }
+
+        // Validate date range
+        if (serviceRequest.StartDate > serviceRequest.EndDate)
+        {
+            throw new Exception("Start date must be before or equal to end date.");
+        }
+
+        var calendarList = await _calendarService.CalendarList.List().ExecuteAsync();
+        List<object> allEvents = new();
+
+        if (calendarList.Items.Any())
+        {
+            foreach (var calendar in calendarList.Items)
+            {
+                try
+                {
+                    var events = await GetEventsInDateRange(calendar.Id, serviceRequest.StartDate.Value, serviceRequest.EndDate.Value);
+                    allEvents.AddRange(events);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error fetching events for calendar {calendar.Id}: {ex.Message}");
+                }
+            }
+        }
+
+        return allEvents;
+    }
+
+    private async Task<IEnumerable<object>> GetEventsInDateRange(string calendarId, DateTime startDate, DateTime endDate)
+    {
+        try
+        {
+            var request = _calendarService.Events.List(calendarId);
+            request.TimeMin = startDate;
+            request.TimeMax = endDate.AddDays(1).AddTicks(-1); // Include full end date
+            request.ShowDeleted = false;
+            request.SingleEvents = true;
+            request.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+
+            var events = await request.ExecuteAsync();
+
+            return events.Items.Select(e => new
+            {
+                CalendarId = calendarId,
+                EventId = e.Id,
+                Summary = e.Summary,
+                Start = e.Start.DateTimeRaw ?? e.Start.Date,
+                End = e.End.DateTimeRaw ?? e.End.Date
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error fetching events in date range: {ex.Message}");
+        }
     }
 
     private async Task<IEnumerable<object>> GetCalendar(string calendarId, DateTime date)

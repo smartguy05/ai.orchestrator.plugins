@@ -16,10 +16,11 @@ public class SupportChannelKbCommand : CommandBase<ServiceRequest,ServiceConfig>
             var service = new SupportChannelKbService(config);
             return serviceRequest.Method.ToLower() switch
             {
-                "search" => await service.SearchKnowledgeBase(serviceRequest),
-                "get_collections" => await service.GetCollections(),
-                "add_collection" => await service.AddCollection(serviceRequest),
-                "health_check" => await service.HealthCheck(),
+                "search_support_channels" => await service.SearchKnowledgeBase(serviceRequest),
+                "get_support_channel_collections" => await service.GetCollections(),
+                "add_support_channel_collection" => await service.AddCollection(serviceRequest),
+                "save_support_channel_information" => await service.AddTextToCollection(serviceRequest),
+                "support_channel_health_check" => await service.HealthCheck(),
                 _ => new  { Success = false, Message = $"Action '{serviceRequest.Method}' not supported" }
             };
         }

@@ -20,6 +20,7 @@ public class GoogleCalendarCommand : CommandBase<ServiceRequest,ServiceConfig>
                 CalendarMethods.Event => await calendarService.GetEvent(serviceRequest),
                 CalendarMethods.EditEvent => await calendarService.EditEvent(serviceRequest),
                 CalendarMethods.Day => await calendarService.GetEventsForDay(serviceRequest),
+                CalendarMethods.Range => await calendarService.GetEventsForDateRange(serviceRequest),
                 CalendarMethods.Calendars => await calendarService.GetCalendars(serviceRequest),
                 CalendarMethods.Calendar => await calendarService.GetCalendar(serviceRequest),
                 _ => throw new Exception("Invalid Google Calendar command specified")

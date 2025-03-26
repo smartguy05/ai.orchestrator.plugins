@@ -15,6 +15,7 @@ public class SupportChannelKbService
 
     public async Task<string[]> SearchKnowledgeBase(ServiceRequest request)
     {
+        FilterOutDumbAiApiPlaceholders(request);
         using var httpClient = new HttpClient();
         
         httpClient.DefaultRequestHeaders.Authorization = 
@@ -69,6 +70,28 @@ public class SupportChannelKbService
         return await response.Content.ReadFromJsonAsync<object>();
     }
 
+    public async Task<object> AddTextToCollection(ServiceRequest request)
+    {
+        using var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+
+        var requestBody = new 
+        { 
+            text = request.NewInformation, 
+            data = request.Description,
+            metaData = request.NewInformationMetaData
+        };
+        
+        var response = await httpClient.PostAsJsonAsync(
+            $"{_config.SupportChannelKbUrl}/text/{request.SupportChannel}", 
+            requestBody
+        );
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<object>();
+    }
     
     public async Task<object> HealthCheck()
     {
@@ -82,4 +105,18 @@ public class SupportChannelKbService
         return response.Content.ReadFromJsonAsync<dynamic>();
     }
 
+    private void FilterOutDumbAiApiPlaceholders(ServiceRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ApiKey))
+        {
+            throw new Exception("API Key is missing. Get API key using get_support_channel_collections");
+        }
+
+        var requestApiKey = request.ApiKey.ToLower();
+
+        if (!Guid.TryParse(requestApiKey, out _))
+        {
+            throw new Exception("API Key is incorrect. Get API key using get_support_channel_collections");
+        }
+    }
 }

@@ -1,11 +1,13 @@
 ﻿using System.Text.Json;
 using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Telegram.Models;
 using Ai.Orchestrator.Models.Extensions;
 using Ai.Orchestrator.Services;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 namespace Ai.Orchestrator.Plugins.Telegram;
@@ -33,43 +35,89 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
         {
             var config = configString.ReadConfig<ServiceConfig>();
             _client = new TelegramBotClient(config.BotToken);
-            var updates = await _client.GetUpdates();
+            var clientUpdates = await _client.GetUpdates();
 
             return Task.Run(async () => {
                 while (_client is not null)
                 {
+                    var updates = clientUpdates.ToList(); 
                     if (updates.Any())
                     {
-                        var lastMessage = updates.Last();
-                        var messages = updates.Select(s => s.Message?.Text);
-                        var concatenatedMessage = string.Join("\n", messages);
-                        Console.WriteLine($"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
-
-                        var serviceRequest = new
+                        var tryAgain = false;
+                        List<Update> filteredUpdates = new ();
+                        // only get updates sent in the last 5 minutes
+                        foreach (var update in updates)
                         {
-                            SystemPrompt = (string)null,
-                            UserPrompt = concatenatedMessage,
-                            ConversationId = lastMessage.Message?.Chat.Username is not null ? $"telegram-{lastMessage.Message?.Chat.Username}" : null
-                        };
-                        var stringified = JsonSerializer.Serialize(serviceRequest);
-                        var request = new OrchestratorRequest
-                        {
-                            Service = config.AiPlugin,
-                            ServiceRequest = stringified
-                        };
+                            if ((DateTime.UtcNow - (update.Message?.Date ?? DateTime.UtcNow)).Minutes <= 5)
+                            {
+                                filteredUpdates.Add(update);
+                            }
+                        }
 
-                        var orchestrator = ServiceResolver.GetService<IOrchestrator>();
-                        var result = await orchestrator.ProcessRequest(request);
+                        if (filteredUpdates.Any())
+                        {
+                            var lastMessage = filteredUpdates.Last();
+                            var messages = filteredUpdates.Select(s => s.Message?.Text);
+                            var concatenatedMessage = string.Join($". ", messages);
+                            var conversationId = lastMessage.Message?.Chat.Username is not null
+                                ? $"telegram-{lastMessage.Message?.Chat.Username}"
+                                : null;
+                            Console.WriteLine($"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
+        
+                            var serviceRequest = new
+                            {
+                                SystemPrompt = (string)null,
+                                UserPrompt = concatenatedMessage,
+                                ConversationId = conversationId
+                            };
+                            var stringified = JsonSerializer.Serialize(serviceRequest);
+                            var request = new OrchestratorRequest
+                            {
+                                Service = config.AiPlugin,
+                                ServiceRequest = stringified
+                            };
+
+                            try
+                            {
+                                var orchestrator = ServiceResolver.GetService<IOrchestrator>();
+                                var result = await orchestrator.ProcessRequest(request);
                         
-                        var aiResponse = result?.GetType().GetProperty("Result");
-                        var response = aiResponse?.GetValue(result) as string;
-                        var offset = updates.Last().Id + 1;
-                        updates = await _client.GetUpdates(offset);
-                        await SendMessage(config.BotToken, lastMessage.Message?.Chat.Id.ToString(), response);
+                                var aiResponse = result?.GetType().GetProperty("Result");
+                                var response = aiResponse?.GetValue(result) as string;
+                                await SendMessage(config.BotToken, lastMessage.Message?.Chat.Id.ToString(), response);
+                            }
+                            catch (Exception e)
+                            {
+                                if (e.Message.ToLower()
+                                    .Contains(
+                                        "an assistant message with 'tool_calls' must be followed by tool messages"))
+                                {
+                                    var cachedMessages = await MessageCache.GetCachedMessages(conversationId);
+                                    if (cachedMessages.Any())
+                                    {
+                                        var purgedMessages = RemoveNonUserMessagesFromEnd(cachedMessages);
+                                        await MessageCache.SaveCachedMessages(conversationId, purgedMessages);
+                                        Console.WriteLine($"Message cache polluted with toolcall error. Resetting message cache for id {lastMessage.Message.Chat.Id}");
+                                        Console.WriteLine($"Original message list: {Environment.NewLine} {JsonSerializer.Serialize(cachedMessages)}");
+                                        Console.WriteLine($"Purged message list: {Environment.NewLine} {JsonSerializer.Serialize(purgedMessages)}");
+                                        tryAgain = true;
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("An error occured while processing request for Telegram message", e);
+                                    await SendMessage(config.BotToken, lastMessage.Message.Chat.Id.ToString(),
+                                        $"An error occurred while processing request. Error: {e.Message}");
+                                }
+                            }
+                        }
+
+                        var offset = updates.Last().Id + (tryAgain ? 0 : 1);
+                        clientUpdates = await _client.GetUpdates(offset);
                     }
                     else
                     {
-                        updates = await _client.GetUpdates();
+                        clientUpdates = await _client.GetUpdates();
                     }
                 }
             });
@@ -92,6 +140,24 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
 
         return Task.CompletedTask;
     }
+    
+    private List<ChatMessageHistory> RemoveNonUserMessagesFromEnd(List<ChatMessageHistory> cachedMessages)
+    {
+        var modifiedMessages = new List<ChatMessageHistory>(cachedMessages);
+
+        for (int i = modifiedMessages.Count - 1; i >= 0; i--)
+        {
+            // If we find a 'user' role message, stop removing
+            if (modifiedMessages[i].Role == "user")
+                break;
+
+            // Remove messages that are not 'user' role
+            modifiedMessages.RemoveAt(i);
+        }
+
+        return modifiedMessages;
+    }
+
 
     private async Task<object> SendMessage(string botToken, string chatId, string messageText)
     {

@@ -10,5 +10,7 @@ public record ServiceRequest: IPluginServiceRequest
     public string EventId { get; init; }
     public string CalendarId { get; init; }
     public string Summary { get; init; }
-    public DateTime Date { get; init; }
+    public DateTime? Date { get; init; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
 }

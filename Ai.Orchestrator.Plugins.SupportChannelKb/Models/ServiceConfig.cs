@@ -9,5 +9,6 @@ public record ServiceConfig: IPluginConfig
     public string Description { get; set; }
     public IEnumerable<ToolCall> Tools { get; set; }
     public string SupportChannelKbUrl { get; set; }
-    public IEnumerable<SupportChannel> Channels { get; set; }
+    public string DefaultSaveChannel { get; set; }
+    public string DefaultChannelApiKey { get; set; }
 }

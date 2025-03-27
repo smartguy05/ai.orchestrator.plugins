@@ -63,7 +63,13 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                                 ? $"telegram-{lastMessage.Message?.Chat.Username}"
                                 : null;
                             Console.WriteLine($"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
-        
+
+                            if (await ProcessSpecialCommands(conversationId, lastMessage.Message?.Chat.Id.ToString(), conversationId, concatenatedMessage))
+                            {
+                                clientUpdates = await _client.GetUpdates(updates.Last().Id + (tryAgain ? 0 : 1));
+                                continue;
+                            }
+                            
                             var serviceRequest = new
                             {
                                 SystemPrompt = (string)null,
@@ -140,6 +146,29 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
 
         return Task.CompletedTask;
     }
+
+    private async Task<bool> ProcessSpecialCommands(string botToken, string chatId, string conversationId, string message)
+    {
+        if (message.StartsWith('/'))
+        {
+            string response = null;
+            switch (message.ToLower())
+            {
+                case "/reset":
+                    await MessageCache.ClearMessageCache(conversationId);
+                    response = "Message cache reset";
+                    break;
+            }
+
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                await SendMessage(botToken, chatId, response);
+            }
+            return true;
+        }
+
+        return false;
+    }
     
     private List<ChatMessageHistory> RemoveNonUserMessagesFromEnd(List<ChatMessageHistory> cachedMessages)
     {
@@ -157,8 +186,7 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
 
         return modifiedMessages;
     }
-
-
+    
     private async Task<object> SendMessage(string botToken, string chatId, string messageText)
     {
         if (string.IsNullOrEmpty(chatId))

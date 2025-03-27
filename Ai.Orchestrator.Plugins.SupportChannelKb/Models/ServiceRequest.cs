@@ -10,7 +10,6 @@ public record ServiceRequest: IPluginServiceRequest
     
     public string SearchCriteria { get; set; }
     public string SupportChannel { get; set; }
-    public string ApiKey { get; set; }
     public string Description { get; set; }
     public string NewInformation { get; set; }
     public List<Dictionary<string, string>> NewInformationMetaData { get; set; } = new();

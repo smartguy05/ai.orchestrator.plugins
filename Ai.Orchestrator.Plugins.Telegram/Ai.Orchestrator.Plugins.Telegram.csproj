@@ -16,11 +16,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Reference Include="Ai.Orchestrator.Common">
-			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Common.dll</HintPath>
-			<Private>false</Private>
-			<ExcludeAssets>runtime</ExcludeAssets>
-		</Reference>
 		<Reference Include="Ai.Orchestrator.Services">
 			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Services.dll</HintPath>
 			<Private>false</Private>
@@ -34,7 +29,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="System.Net.Http.Json" Version="9.0.3" />
+	  <PackageReference Include="System.Net.Http.Json" Version="8.0.1" />
+	  <PackageReference Include="System.Text.Json" Version="8.0.5" />
 	  <PackageReference Include="Telegram.Bot" Version="22.4.4" />
 	</ItemGroup>
 </Project>

@@ -21,8 +21,11 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
     {
         if (string.IsNullOrEmpty(config.BotToken))
             throw new ArgumentException("Bot token is required");
-        
-        serviceRequest.ChatId ??= config.NotificationChatId;
+
+        if (string.IsNullOrWhiteSpace(serviceRequest.ChatId))
+        {
+            serviceRequest.ChatId = config.NotificationChatId;
+        }
 
         return await SendMessage(config.BotToken, serviceRequest.ChatId, serviceRequest.MessageText);
     }
@@ -79,10 +82,12 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                                 ConversationId = conversationId,
                                 Photo = images.Any() ? images.Last() : null
                             };
+                            var serviceRequestJson = System.Text.Json.JsonSerializer.Serialize(serviceRequest);
+
                             var request = new OrchestratorRequest
                             {
                                 Service = config.AiPlugin,
-                                ServiceRequest = serviceRequest
+                                ServiceRequest = serviceRequestJson
                             };
 
                             try

@@ -17,7 +17,7 @@
 
 	<ItemGroup>
 		<Reference Include="Ai.Orchestrator.Services">
-			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Plugins\Ai.Orchestrator.Services.dll</HintPath>
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Services.dll</HintPath>
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>

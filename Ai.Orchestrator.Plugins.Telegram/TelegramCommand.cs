@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using Ai.Orchestrator.Models;
+﻿using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
@@ -22,8 +21,11 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
     {
         if (string.IsNullOrEmpty(config.BotToken))
             throw new ArgumentException("Bot token is required");
-        
-        serviceRequest.ChatId ??= config.NotificationChatId;
+
+        if (string.IsNullOrWhiteSpace(serviceRequest.ChatId))
+        {
+            serviceRequest.ChatId = config.NotificationChatId;
+        }
 
         return await SendMessage(config.BotToken, serviceRequest.ChatId, serviceRequest.MessageText);
     }
@@ -57,11 +59,12 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                         if (filteredUpdates.Any())
                         {
                             var lastMessage = filteredUpdates.Last();
-                            var messages = filteredUpdates.Select(s => s.Message?.Text);
+                            var messages = filteredUpdates.Select(s => s.Message?.Text).ToList();
                             var concatenatedMessage = string.Join($". ", messages);
                             var conversationId = lastMessage.Message?.Chat.Username is not null
                                 ? $"telegram-{lastMessage.Message?.Chat.Username}"
                                 : null;
+                            
                             Console.WriteLine($"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
 
                             if (await ProcessSpecialCommands(conversationId, lastMessage.Message?.Chat.Id.ToString(), conversationId, concatenatedMessage))
@@ -70,27 +73,35 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                                 continue;
                             }
                             
+                            var images = await GetFileFromMessages(filteredUpdates);
+                            
                             var serviceRequest = new
                             {
                                 SystemPrompt = (string)null,
                                 UserPrompt = concatenatedMessage,
-                                ConversationId = conversationId
+                                ConversationId = conversationId,
+                                Photo = images.Any() ? images.Last() : null
                             };
-                            var stringified = JsonSerializer.Serialize(serviceRequest);
+                            var serviceRequestJson = System.Text.Json.JsonSerializer.Serialize(serviceRequest);
+
                             var request = new OrchestratorRequest
                             {
                                 Service = config.AiPlugin,
-                                ServiceRequest = stringified
+                                ServiceRequest = serviceRequestJson
                             };
 
                             try
                             {
-                                var orchestrator = ServiceResolver.GetService<IOrchestrator>();
+                                var orchestrator = ServiceResolver.GetOrchestrator();
                                 var result = await orchestrator.ProcessRequest(request);
                         
                                 var aiResponse = result?.GetType().GetProperty("Result");
                                 var response = aiResponse?.GetValue(result) as string;
-                                await SendMessage(config.BotToken, lastMessage.Message?.Chat.Id.ToString(), response);
+
+                                if (!string.IsNullOrWhiteSpace(response))
+                                {
+                                    await SendMessage(config.BotToken, lastMessage.Message?.Chat.Id.ToString(), response);
+                                }
                             }
                             catch (Exception e)
                             {
@@ -104,8 +115,8 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                                         var purgedMessages = RemoveNonUserMessagesFromEnd(cachedMessages);
                                         await MessageCache.SaveCachedMessages(conversationId, purgedMessages);
                                         Console.WriteLine($"Message cache polluted with toolcall error. Resetting message cache for id {lastMessage.Message.Chat.Id}");
-                                        Console.WriteLine($"Original message list: {Environment.NewLine} {JsonSerializer.Serialize(cachedMessages)}");
-                                        Console.WriteLine($"Purged message list: {Environment.NewLine} {JsonSerializer.Serialize(purgedMessages)}");
+                                        Console.WriteLine($"Original message list: {Environment.NewLine} {cachedMessages}");
+                                        Console.WriteLine($"Purged message list: {Environment.NewLine} {purgedMessages}");
                                         tryAgain = true;
                                     }
                                 }
@@ -125,6 +136,8 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                     {
                         clientUpdates = await _client.GetUpdates();
                     }
+                    
+                    Thread.Sleep(3000);
                 }
             });
         }
@@ -223,4 +236,25 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
             };
         }
     }
+
+    private async Task<List<string>> GetFileFromMessages(List<Update> updates)
+    {
+        var photos = new List<string>();
+        foreach (var update in updates)
+        {
+            if (update.Message?.Photo is not null && update.Message.Photo.Any())
+            {
+                var photo = await _client.GetFile(update.Message.Photo.Last().FileId);
+                using var stream = new MemoryStream();
+                await _client.DownloadFile(photo, stream);
+                
+                var streamBytes = stream.ToArray();
+                var base64String = Convert.ToBase64String(streamBytes);
+                photos.Add(base64String);
+            }
+        }
+        
+        return photos;
+    }
+
 }

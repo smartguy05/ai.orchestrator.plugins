@@ -4,6 +4,7 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<RootNamespace>Ai.Orchestrator.Plugins.HomeAssistantVoice</RootNamespace>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -16,21 +17,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Reference Include="Ai.Orchestrator.Services">
-			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Services.dll</HintPath>
-			<Private>false</Private>
-			<ExcludeAssets>runtime</ExcludeAssets>
-		</Reference>
 		<Reference Include="Ai.Orchestrator.Models">
 			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net7.0\Ai.Orchestrator.Models.dll</HintPath>
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <PackageReference Include="System.Net.Http.Json" Version="8.0.1" />
-	  <PackageReference Include="System.Text.Json" Version="8.0.5" />
-	  <PackageReference Include="Telegram.Bot" Version="22.4.4" />
 	</ItemGroup>
 </Project>

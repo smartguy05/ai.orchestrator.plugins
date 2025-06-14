@@ -5,6 +5,7 @@ using Ai.Orchestrator.Plugins.GoogleCalendar.Exceptions;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
+using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
 
@@ -158,6 +159,54 @@ public class CalService
                 updatedEvent.Summary,
                 Start = updatedEvent.Start.DateTimeRaw,
                 End = updatedEvent.End.DateTimeRaw
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Error updating event: {ex.Message}");
+        }
+    }
+    
+    public async Task<object> AddEvent(ServiceRequest serviceRequest)
+    {
+        if (string.IsNullOrWhiteSpace(serviceRequest.Summary))
+        {
+            throw new Exception("Missing required parameters: summary.");
+        }
+        
+        var calendarId = !string.IsNullOrWhiteSpace(serviceRequest.CalendarId) 
+            ? serviceRequest.CalendarId
+            : "primary";
+
+        try
+        {
+            var calendarEvent = new Event
+            {
+                Attendees = serviceRequest.Attendees.Select(s => s.ToGoogleEventAttendee()).ToList(),
+                Description = serviceRequest.Description,
+                Location = serviceRequest.Location,
+                Start = new EventDateTime
+                {
+                    DateTimeRaw = serviceRequest.StartDate.ToString()
+                },
+                End = new EventDateTime
+                {
+                    DateTimeRaw = serviceRequest.EndDate.ToString()
+                },
+                Reminders = new Event.RemindersData
+                {
+                    Overrides = serviceRequest.Reminders
+                }
+            };
+            var insertRequest = await _calendarService.Events.Insert(calendarEvent, calendarId).ExecuteAsync();
+            
+            return new
+            {
+                EventId = insertRequest.Id,
+                insertRequest.Summary,
+                Start = insertRequest.Start.DateTimeRaw,
+                End = insertRequest.End.DateTimeRaw,
+                Attendees = insertRequest.Attendees
             };
         }
         catch (Exception ex)

@@ -9,4 +9,5 @@ public static class CalendarMethods
     public const string Calendars = "get_calendars";
     public const string Calendar = "get_calendar";
     public const string Range = "get_calendar_events_for_range";
+    public const string AddEvent = "add_calendar_event";
 }

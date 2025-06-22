@@ -9,4 +9,6 @@ public record ServiceRequest: IPluginServiceRequest
     public string RequestingService { get; set; }
     public string Uid { get; set; }
     public string DataType { get; set; } = "memos";
+    public string Content { get; set; }
+    public string Visibility { get; set; }
 }

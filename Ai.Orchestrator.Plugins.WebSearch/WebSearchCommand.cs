@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.WebSearch.Models;
@@ -11,7 +12,7 @@ public class WebSearchCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override string Name => "WebSearch";
     public override string Description => "A plugin to allow searching the web";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Accept.Add(
@@ -29,8 +30,8 @@ public class WebSearchCommand: CommandBase<ServiceRequest, ServiceConfig>
 
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine("Unable to get web search results");
-            Console.WriteLine(await response.Content.ReadAsStringAsync());
+            await Log(LogLevel.Warning, "Unable to get web search results");
+            await Log(LogLevel.Info, await response.Content.ReadAsStringAsync());
             return new
             {
                 Success = false

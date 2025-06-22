@@ -1,4 +1,5 @@
-﻿using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 
@@ -9,11 +10,11 @@ public class GoogleCalendarCommand : CommandBase<ServiceRequest,ServiceConfig>
     public override string Name => "GoogleCalendar";
     public override string Description  => "Integration with Google Calendar";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
         try
         {
-            var calendarService = new CalService(config);
+            var calendarService = new CalService(config, Logger);
             return serviceRequest.Method.ToLower() switch
             {
                 CalendarMethods.Events => await calendarService.GetEvents(serviceRequest),
@@ -29,7 +30,7 @@ public class GoogleCalendarCommand : CommandBase<ServiceRequest,ServiceConfig>
         }
         catch (Exception e)
         {
-            Console.Write($"Error executing action '{serviceRequest.Method}'", e);
+            await Log(LogLevel.Error, $"Error executing action '{serviceRequest.Method}'", e);
             return new
             {
                 Success = false, 

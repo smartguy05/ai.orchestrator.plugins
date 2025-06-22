@@ -1,6 +1,8 @@
 ﻿using System.Globalization;
 using System.Reflection;
 using Ai.Orchestrator.Models;
+using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Exceptions;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
 using Google.Apis.Auth.OAuth2;
@@ -14,9 +16,11 @@ namespace Ai.Orchestrator.Plugins.GoogleCalendar;
 public class CalService
 {
     private readonly CalendarService _calendarService;
+    private static LogDelegate _logger = null;
 
-    public CalService(ServiceConfig config)
+    public CalService(ServiceConfig config, LogDelegate logDelegate)
     {
+        _logger = logDelegate;
         var directory = $"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}/GoogleCalendar";
         var files = Directory.GetFiles(directory, "*.TokenResponse-user");
         ICredential credential = null;
@@ -253,7 +257,7 @@ public class CalService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    await _logger(LogLevel.Error, ex.Message, ex);
                 }
             }
             return calendarItems;
@@ -289,7 +293,7 @@ public class CalService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching events for calendar {calendar.Id}: {ex.Message}");
+                    await _logger(LogLevel.Error, $"Error fetching events for calendar {calendar.Id}: {ex.Message}", ex);
                 }
             }
         }

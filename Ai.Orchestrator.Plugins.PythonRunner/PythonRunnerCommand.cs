@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.PythonRunner.Models;
@@ -10,7 +11,7 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override string Name => "PythonRunner";
     public override string Description => "A plugin to run a python script";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
         var tempFile = Path.GetTempFileName() + ".py";
 
@@ -22,7 +23,7 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
+            await Log(LogLevel.Error, e.Message, e);
             return new { Success = false };
         }
         finally
@@ -66,13 +67,11 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
             await process.WaitForExitAsync();
 
             // Output the results.
-            Console.WriteLine("Output:");
-            Console.WriteLine(output);
+            await Log(LogLevel.Info, $"Output: {output}");
 
             if (!string.IsNullOrWhiteSpace(error))
             {
-                Console.WriteLine("Error:");
-                Console.WriteLine(error);
+                await Log(LogLevel.Warning, $"Error: {error}");
 
                 return new { Success = false, Error = error };
             }
@@ -80,8 +79,7 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
         }
         catch (Exception ex)
         {
-            Console.WriteLine("An error occurred while running the Python script:");
-            Console.WriteLine(ex.Message);
+            await Log(LogLevel.Error, "An error occurred while running the Python script:", ex);
             return new { Success = false, Error = ex.Message };
         }
         

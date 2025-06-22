@@ -1,4 +1,5 @@
-﻿using Ai.Orchestrator.Models.Interfaces;
+﻿using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.SupportChannelKb.Models;
 
@@ -9,7 +10,7 @@ public class SupportChannelKbCommand : CommandBase<ServiceRequest,ServiceConfig>
     public override string Name => "Support Channel KB";
     public override string Description => "Plugin for interfacing with the Support Channel Knowledge Base API";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
         try
         {
@@ -26,7 +27,7 @@ public class SupportChannelKbCommand : CommandBase<ServiceRequest,ServiceConfig>
         }
         catch (Exception ex)
         {
-            Console.Write($"Error executing action '{serviceRequest.Method}'", ex);
+            await Log(LogLevel.Error, $"Error executing action '{serviceRequest.Method}'", ex);
             return new
             {
                 Success = false, 

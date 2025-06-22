@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.HomeAssistantVoice.Models;
@@ -12,7 +13,7 @@ public class HomeAssistantAssistCommand : CommandBase<ServiceRequest, ServiceCon
     public override string Name => "HomeAssist";
     public override string Description => "A plugin to send natural language commands to Home Assistant";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Accept.Add(
@@ -35,8 +36,8 @@ public class HomeAssistantAssistCommand : CommandBase<ServiceRequest, ServiceCon
 
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine("Unable to execute Home Assistant command");
-            Console.WriteLine(await response.Content.ReadAsStringAsync());
+            await Log(LogLevel.Warning, "Unable to execute Home Assistant command");
+            await Log(LogLevel.Info, await response.Content.ReadAsStringAsync());
             return new
             {
                 Success = false

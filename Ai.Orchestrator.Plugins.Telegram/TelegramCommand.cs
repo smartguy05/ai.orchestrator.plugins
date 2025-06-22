@@ -1,5 +1,6 @@
 ﻿using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Chat;
+using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Telegram.Models;
@@ -17,7 +18,7 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override string Name => "Telegram";
     public override string Description => "A plugin to send and receive telegram messages";
 
-    public override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
         if (string.IsNullOrEmpty(config.BotToken))
             throw new ArgumentException("Bot token is required");
@@ -30,12 +31,12 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
         return await SendMessage(config.BotToken, serviceRequest.ChatId, serviceRequest.MessageText);
     }
 
-    public override async Task<object> Initialize(string configString)
+    public async Task<object> Initialize(string configString)
     {
-        Console.WriteLine("Initializing Telegram");
+        await Log(LogLevel.Info, "Initializing Telegram");
         try
         {
-            var config = configString.ReadConfig<ServiceConfig>();
+            var config = configString.ReadPluginConfig<ServiceConfig>();
             _client = new TelegramBotClient(config.BotToken);
             var clientUpdates = await _client.GetUpdates();
 
@@ -64,8 +65,8 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                             var conversationId = lastMessage.Message?.Chat.Username is not null
                                 ? $"telegram-{lastMessage.Message?.Chat.Username}"
                                 : null;
-                            
-                            Console.WriteLine($"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
+
+                            await Log(LogLevel.Info, $"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
 
                             if (await ProcessSpecialCommands(conversationId, lastMessage.Message?.Chat.Id.ToString(), conversationId, concatenatedMessage))
                             {
@@ -114,15 +115,15 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
                                     {
                                         var purgedMessages = RemoveNonUserMessagesFromEnd(cachedMessages);
                                         await MessageCache.SaveCachedMessages(conversationId, purgedMessages);
-                                        Console.WriteLine($"Message cache polluted with toolcall error. Resetting message cache for id {lastMessage.Message.Chat.Id}");
-                                        Console.WriteLine($"Original message list: {Environment.NewLine} {cachedMessages}");
-                                        Console.WriteLine($"Purged message list: {Environment.NewLine} {purgedMessages}");
+                                        await Log(LogLevel.Error, $"Message cache polluted with toolcall error. Resetting message cache for id {lastMessage.Message.Chat.Id}");
+                                        await Log(LogLevel.Info, $"Original message list: {Environment.NewLine} {cachedMessages}");
+                                        await Log(LogLevel.Info, $"Purged message list: {Environment.NewLine} {purgedMessages}");
                                         tryAgain = true;
                                     }
                                 }
                                 else
                                 {
-                                    Console.WriteLine("An error occured while processing request for Telegram message", e);
+                                    await Log(LogLevel.Error, "An error occured while processing request for Telegram message", e);
                                     await SendMessage(config.BotToken, lastMessage.Message.Chat.Id.ToString(),
                                         $"An error occurred while processing request. Error: {e.Message}");
                                 }
@@ -143,8 +144,7 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
         }
         catch (Exception e)
         {
-            Console.WriteLine("Error initializing Telegram");
-            Console.WriteLine(e);
+            await Log(LogLevel.Error, "Error initializing Telegram", e);
         }
 
         return null;
@@ -228,7 +228,7 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Telegram message send failed: {ex.Message}", ex);
+            await Log(LogLevel.Error, $"Telegram message send failed: {ex.Message}", ex);
             return new
             {
                 Success = false,

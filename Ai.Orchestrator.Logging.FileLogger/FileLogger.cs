@@ -8,7 +8,7 @@ public class FileLogger: LoggingBase<LoggingConfig>
 {
     public override string Name => "FileLogger";
     public override string Description => "Save log messages to file";
-    
+
     protected override async Task DoWork(LoggingConfig config, LogLevel logLevel, string message, Exception exception = null)
     {
         var logLevelMessage = logLevel switch
@@ -17,9 +17,11 @@ public class FileLogger: LoggingBase<LoggingConfig>
             LogLevel.Warning => "[WARNING]",
             _ => "[INFO]"
         };
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var loggingFile = $"{config.LoggingFolder}/{today}.log";
         
         // Ensure the directory exists
-        var directory = Path.GetDirectoryName(config.FileLocation);
+        var directory = Path.GetDirectoryName(loggingFile);
         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
@@ -49,7 +51,7 @@ public class FileLogger: LoggingBase<LoggingConfig>
         logEntry += "\n";
         
         // Append to the log file
-        await File.AppendAllTextAsync(config.FileLocation, logEntry);
+        await File.AppendAllTextAsync(loggingFile, logEntry);
     }
 
     

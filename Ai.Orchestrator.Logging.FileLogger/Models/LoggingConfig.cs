@@ -8,5 +8,5 @@ public class LoggingConfig: ILoggingConfig
     public string Name { get; set; }
     public string Description { get; set; }
     public LogLevel MinimumLogLevel { get; set; } 
-    public string FileLocation { get; set; }
+    public string LoggingFolder { get; set; }
 }

@@ -6,7 +6,7 @@ namespace Ai.Orchestrator.Logging.FileLogger;
 
 public class FileLogger: LoggingBase<LoggingConfig>
 {
-    public override string Name => "FileLogger";
+    public override string Name => "Ai.Orchestrator.Logging.FileLogger";
     public override string Description => "Save log messages to file";
 
     protected override async Task DoWork(LoggingConfig config, LogLevel logLevel, string message, Exception exception = null)

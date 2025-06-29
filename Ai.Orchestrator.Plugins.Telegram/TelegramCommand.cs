@@ -1,22 +1,23 @@
-﻿using Ai.Orchestrator.Models;
-using Ai.Orchestrator.Models.Chat;
+﻿using System.Text.RegularExpressions;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Telegram.Models;
 using Ai.Orchestrator.Models.Extensions;
-using Ai.Orchestrator.Services;
 using Telegram.Bot;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace Ai.Orchestrator.Plugins.Telegram;
 
-public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
+public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfirmationPlugin
 {
-    private TelegramBotClient _client;
-    public override string Name => "Telegram";
+    public override string Name => "Ai.Orchestrator.Plugins.Telegram";
     public override string Description => "A plugin to send and receive telegram messages";
+    protected override IConfirmationService ConfirmationService { get; set; }
+    private static TelegramService _service;
+    private static TelegramBotClient _botClient;
+    private static ServiceConfig _config;
+    private static IConfirmationService _staticConfirmationService;
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
@@ -28,233 +29,95 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>
             serviceRequest.ChatId = config.NotificationChatId;
         }
 
-        return await SendMessage(config.BotToken, serviceRequest.ChatId, serviceRequest.MessageText);
+        _service = await GetTelegramService(config, ConfirmationService, Log);
+
+        return await _service.SendMessage(serviceRequest.MessageText, serviceRequest.ChatId);
     }
 
-    public async Task<object> Initialize(string configString)
+    public override async Task<object> Initialize(string configString, LogDelegate log, IConfirmationService confirmationService)
     {
-        await Log(LogLevel.Info, "Initializing Telegram");
+        ConfirmationService ??= confirmationService;
+        _staticConfirmationService = confirmationService;
+        await log(LogLevel.Info, "Initializing Telegram");
         try
         {
             var config = configString.ReadPluginConfig<ServiceConfig>();
-            _client = new TelegramBotClient(config.BotToken);
-            var clientUpdates = await _client.GetUpdates();
+            _config ??= config;
+            _botClient ??= new TelegramBotClient(config.BotToken);
+            var clientUpdates = await _botClient.GetUpdates();
 
-            return Task.Run(async () => {
-                while (_client is not null)
-                {
-                    var updates = clientUpdates.ToList(); 
-                    if (updates.Any())
-                    {
-                        var tryAgain = false;
-                        List<Update> filteredUpdates = new ();
-                        // only get updates sent in the last 5 minutes
-                        foreach (var update in updates)
-                        {
-                            if ((DateTime.UtcNow - (update.Message?.Date ?? DateTime.UtcNow)).Minutes <= 5)
-                            {
-                                filteredUpdates.Add(update);
-                            }
-                        }
+            _service = await GetTelegramService(config, confirmationService, log);
+            // _service = new TelegramService(_botClient, log, config, _confirmationService, Confirm);
 
-                        if (filteredUpdates.Any())
-                        {
-                            var lastMessage = filteredUpdates.Last();
-                            var messages = filteredUpdates.Select(s => s.Message?.Text).ToList();
-                            var concatenatedMessage = string.Join($". ", messages);
-                            var conversationId = lastMessage.Message?.Chat.Username is not null
-                                ? $"telegram-{lastMessage.Message?.Chat.Username}"
-                                : null;
-
-                            await Log(LogLevel.Info, $"Telegram bot ${lastMessage.Message?.Chat.Id} received message: '{concatenatedMessage}'");
-
-                            if (await ProcessSpecialCommands(conversationId, lastMessage.Message?.Chat.Id.ToString(), conversationId, concatenatedMessage))
-                            {
-                                clientUpdates = await _client.GetUpdates(updates.Last().Id + (tryAgain ? 0 : 1));
-                                continue;
-                            }
-                            
-                            var images = await GetFileFromMessages(filteredUpdates);
-                            
-                            var serviceRequest = new
-                            {
-                                SystemPrompt = (string)null,
-                                UserPrompt = concatenatedMessage,
-                                ConversationId = conversationId,
-                                Photo = images.Any() ? images.Last() : null
-                            };
-                            var serviceRequestJson = System.Text.Json.JsonSerializer.Serialize(serviceRequest);
-
-                            var request = new OrchestratorRequest
-                            {
-                                Service = config.AiPlugin,
-                                ServiceRequest = serviceRequestJson
-                            };
-
-                            try
-                            {
-                                var orchestrator = ServiceResolver.GetOrchestrator();
-                                var result = await orchestrator.ProcessRequest(request);
-                        
-                                var aiResponse = result?.GetType().GetProperty("Result");
-                                var response = aiResponse?.GetValue(result) as string;
-
-                                if (!string.IsNullOrWhiteSpace(response))
-                                {
-                                    await SendMessage(config.BotToken, lastMessage.Message?.Chat.Id.ToString(), response);
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                if (e.Message.ToLower()
-                                    .Contains(
-                                        "an assistant message with 'tool_calls' must be followed by tool messages"))
-                                {
-                                    var cachedMessages = await MessageCache.GetCachedMessages(conversationId);
-                                    if (cachedMessages.Any())
-                                    {
-                                        var purgedMessages = RemoveNonUserMessagesFromEnd(cachedMessages);
-                                        await MessageCache.SaveCachedMessages(conversationId, purgedMessages);
-                                        await Log(LogLevel.Error, $"Message cache polluted with toolcall error. Resetting message cache for id {lastMessage.Message.Chat.Id}");
-                                        await Log(LogLevel.Info, $"Original message list: {Environment.NewLine} {cachedMessages}");
-                                        await Log(LogLevel.Info, $"Purged message list: {Environment.NewLine} {purgedMessages}");
-                                        tryAgain = true;
-                                    }
-                                }
-                                else
-                                {
-                                    await Log(LogLevel.Error, "An error occured while processing request for Telegram message", e);
-                                    await SendMessage(config.BotToken, lastMessage.Message.Chat.Id.ToString(),
-                                        $"An error occurred while processing request. Error: {e.Message}");
-                                }
-                            }
-                        }
-
-                        var offset = updates.Last().Id + (tryAgain ? 0 : 1);
-                        clientUpdates = await _client.GetUpdates(offset);
-                    }
-                    else
-                    {
-                        clientUpdates = await _client.GetUpdates();
-                    }
-                    
-                    Thread.Sleep(3000);
-                }
-            });
+            return _service.ListenForMessages(clientUpdates.ToList());
         }
         catch (Exception e)
         {
-            await Log(LogLevel.Error, "Error initializing Telegram", e);
+            await log(LogLevel.Error, "Error initializing Telegram", e);
+            throw;
         }
+    }
 
-        return null;
+    private async  Task<TelegramService> GetTelegramService(ServiceConfig config, IConfirmationService confirmationService, LogDelegate log)
+    {
+        _config ??= config;
+        _botClient ??= new TelegramBotClient(config.BotToken);
+        log ??= Log;
+        ConfirmationService ??= confirmationService;
+
+        return new TelegramService(_botClient, log, config, confirmationService, Confirm);
+    }
+    
+    public Task<object> RequestConfirmation(Confirmation confirmation, OrchestratorRequest request)
+    {
+        // DIAGNOSTIC STEP: Add a check that fails loudly and tells us exactly what is null.
+        if (_botClient == null || _config == null || _staticConfirmationService == null)
+        {
+            throw new InvalidOperationException(
+                $"TelegramCommand is not fully initialized. Status: " +
+                $"BotClient is {(_botClient == null ? "null" : "not null")}, " +
+                $"Config is {(_config == null ? "null" : "not null")}, " +
+                $"ConfirmationService is {(_staticConfirmationService == null ? "null" : "not null")}."
+            );
+        }
+        
+        TelegramService.PendingConfirmation = confirmation;
+        _service ??= new TelegramService(_botClient, Log, _config, ConfirmationService, Confirm);
+        return _service.SendMessage(
+            GetConfirmationMessage(confirmation), 
+            _config.NotificationChatId, 
+            confirmation.Options.Select(s => s.Key).ToArray()
+            );
+    }
+
+    public async ValueTask<object> Confirm(string confirmationId, bool confirm)
+    {
+        var guid = Guid.Parse(confirmationId);
+        return await _staticConfirmationService.Confirm(guid, confirm);
     }
 
     public Task Dispose()
     {
-        if (_client is not null)
-        {
-            _client = null;
-        }
+        _service?.Dispose();
 
         return Task.CompletedTask;
     }
 
-    private async Task<bool> ProcessSpecialCommands(string botToken, string chatId, string conversationId, string message)
+    private string GetConfirmationMessage(Confirmation confirmation)
     {
-        if (message.StartsWith('/'))
+        var content = confirmation.Content;
+        if (Regex.IsMatch(content, @".*<html>.+</html>.*", RegexOptions.Singleline))
         {
-            string response = null;
-            switch (message.ToLower())
-            {
-                case "/reset":
-                    await MessageCache.ClearMessageCache(conversationId);
-                    response = "Message cache reset";
-                    break;
-            }
-
-            if (!string.IsNullOrWhiteSpace(response))
-            {
-                await SendMessage(botToken, chatId, response);
-            }
-            return true;
+            content = content.Replace("<html>", "");
+            content = content.Replace("</html>", "");
+            content = content.Replace("<body>", "");
+            content = content.Replace("</body>", "");
+        }
+        if (!string.IsNullOrWhiteSpace(confirmation.Content))
+        {
+            content = $"<html><body>{confirmation.ConfirmationMessage} {Environment.NewLine} {content}</body></html>";
         }
 
-        return false;
+        return content;
     }
-    
-    private List<ChatMessageHistory> RemoveNonUserMessagesFromEnd(List<ChatMessageHistory> cachedMessages)
-    {
-        var modifiedMessages = new List<ChatMessageHistory>(cachedMessages);
-
-        for (int i = modifiedMessages.Count - 1; i >= 0; i--)
-        {
-            // If we find a 'user' role message, stop removing
-            if (modifiedMessages[i].Role == "user")
-                break;
-
-            // Remove messages that are not 'user' role
-            modifiedMessages.RemoveAt(i);
-        }
-
-        return modifiedMessages;
-    }
-    
-    private async Task<object> SendMessage(string botToken, string chatId, string messageText)
-    {
-        if (string.IsNullOrEmpty(chatId))
-            throw new ArgumentException("Chat ID is required");
-
-        if (_client is null)
-        {
-            _client = new TelegramBotClient(botToken);
-        }
-
-        try 
-        {
-            var message = await _client.SendMessage(
-                chatId: chatId,
-                text: messageText,
-                parseMode: ParseMode.Markdown
-            );
-
-            return new 
-            {
-                Success = true,
-                message.MessageId,
-                message.Text,
-                SentAt = message.Date
-            };
-        }
-        catch (Exception ex)
-        {
-            await Log(LogLevel.Error, $"Telegram message send failed: {ex.Message}", ex);
-            return new
-            {
-                Success = false,
-                Error = ex.Message
-            };
-        }
-    }
-
-    private async Task<List<string>> GetFileFromMessages(List<Update> updates)
-    {
-        var photos = new List<string>();
-        foreach (var update in updates)
-        {
-            if (update.Message?.Photo is not null && update.Message.Photo.Any())
-            {
-                var photo = await _client.GetFile(update.Message.Photo.Last().FileId);
-                using var stream = new MemoryStream();
-                await _client.DownloadFile(photo, stream);
-                
-                var streamBytes = stream.ToArray();
-                var base64String = Convert.ToBase64String(streamBytes);
-                photos.Add(base64String);
-            }
-        }
-        
-        return photos;
-    }
-
 }

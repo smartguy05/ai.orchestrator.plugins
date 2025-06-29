@@ -8,8 +8,9 @@ namespace Ai.Orchestrator.Plugins.PythonRunner;
 
 public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
 {
-    public override string Name => "PythonRunner";
+    public override string Name => "Ai.Orchestrator.Plugins.PythonRunner";
     public override string Description => "A plugin to run a python script";
+    protected override IConfirmationService ConfirmationService { get; set; }
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {

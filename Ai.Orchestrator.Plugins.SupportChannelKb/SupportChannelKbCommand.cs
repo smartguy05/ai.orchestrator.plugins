@@ -7,9 +7,10 @@ namespace Ai.Orchestrator.Plugins.SupportChannelKb;
 
 public class SupportChannelKbCommand : CommandBase<ServiceRequest,ServiceConfig>
 {
-    public override string Name => "Support Channel KB";
+    public override string Name => "Ai.Orchestrator.Plugins.SupportChannelKb";
     public override string Description => "Plugin for interfacing with the Support Channel Knowledge Base API";
-
+    protected override IConfirmationService ConfirmationService { get; set; }
+    
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
         try

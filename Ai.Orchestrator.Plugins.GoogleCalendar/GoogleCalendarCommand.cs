@@ -7,8 +7,9 @@ namespace Ai.Orchestrator.Plugins.GoogleCalendar;
 
 public class GoogleCalendarCommand : CommandBase<ServiceRequest,ServiceConfig>
 {
-    public override string Name => "GoogleCalendar";
+    public override string Name => "Ai.Orchestrator.Plugins.GoogleCalendar";
     public override string Description  => "Integration with Google Calendar";
+    protected override IConfirmationService ConfirmationService { get; set; }
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {

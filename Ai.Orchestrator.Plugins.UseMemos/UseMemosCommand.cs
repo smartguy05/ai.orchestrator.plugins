@@ -10,12 +10,13 @@ namespace Ai.Orchestrator.Plugins.UseMemos;
 
 public class UseMemosCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
+    public override string Name => "Ai.Orchestrator.Plugins.UseMemos";
+    public override string Description  => "Integration with UseMemos server";
+    protected override IConfirmationService ConfirmationService { get; set; }
+
     private readonly string[] _validTypes = { "read_memos", "add_memo", "edit_memo", "update_memo" };
     private readonly string[] _validGetTypes = { "memos", "resources" };
     
-    public override string Name => "UseMemos";
-    public override string Description  => "Integration with UseMemos server";
-
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> enumerableToolCalls)
     {
         ValidateRequestType(serviceRequest.Method);

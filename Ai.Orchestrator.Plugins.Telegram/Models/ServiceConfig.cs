@@ -11,4 +11,5 @@ public class ServiceConfig: IPluginConfig
     public string BotToken { get; set; }
     public string AiPlugin { get; set; }
     public string NotificationChatId { get; set; }
+    public int PollingIntervalInMs { get; set; } = 1000;
 }

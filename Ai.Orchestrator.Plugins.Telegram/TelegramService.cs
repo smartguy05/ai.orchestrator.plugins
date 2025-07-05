@@ -13,7 +13,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Ai.Orchestrator.Plugins.Telegram;
 
-public class TelegramService(TelegramBotClient client, LogDelegate logger, ServiceConfig config, IConfirmationService confirmationService, Func<string,bool,ValueTask<object>> Confirm): IDisposable
+public class TelegramService(TelegramBotClient client, LogDelegate logger, ServiceConfig config, INotificationService notificationService, Func<string,bool,ValueTask<object>> confirm): IDisposable
 {
     public static Confirmation PendingConfirmation;
     private static long? _chatId;
@@ -45,6 +45,9 @@ public class TelegramService(TelegramBotClient client, LogDelegate logger, Servi
             messageText = messageText.Replace(".", "\\.");
             messageText = messageText.Replace("!", "\\!");
             messageText = messageText.Replace("-", "\\-");
+            messageText = messageText.Replace("(", "\\(");
+            messageText = messageText.Replace(")", "\\)");
+            messageText = messageText.Replace("|", "\\|");
 
             ReplyMarkup responseOptions = Array.Empty<string>();
             if (options != null && options.Any())
@@ -129,13 +132,13 @@ public class TelegramService(TelegramBotClient client, LogDelegate logger, Servi
                         continue;
                     }
                     
-                    if (PendingConfirmation is not null && confirmationService.DoesConfirmationExist(PendingConfirmation.Id ?? Guid.Empty, out _))
+                    if (PendingConfirmation is not null && notificationService.DoesConfirmationExist(PendingConfirmation.Id ?? Guid.Empty, out _))
                     {
                         var lowerMessage = concatenatedMessage.ToLowerInvariant();
                         if (PendingConfirmation.Options.Any(a => string.Equals(a.Key, lowerMessage, StringComparison.InvariantCultureIgnoreCase)))
                         {
                             var value = PendingConfirmation.Options.First(a => string.Equals(a.Key, lowerMessage, StringComparison.InvariantCultureIgnoreCase)).Value;
-                            var confirmationResult = await Confirm(PendingConfirmation.Id.ToString(), value);
+                            var confirmationResult = await confirm(PendingConfirmation.Id.ToString(), value);
                             if (confirmationResult.GetType().GetProperty("Success")?.GetValue(confirmationResult) is bool success)
                             {
                                 if (success)

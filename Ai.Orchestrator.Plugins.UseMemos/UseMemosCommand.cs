@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Enums;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
@@ -12,7 +13,7 @@ public class UseMemosCommand: CommandBase<ServiceRequest,ServiceConfig>
 {
     public override string Name => "Ai.Orchestrator.Plugins.UseMemos";
     public override string Description  => "Integration with UseMemos server";
-    protected override IConfirmationService ConfirmationService { get; set; }
+    protected override INotificationService NotificationService { get; set; }
 
     private readonly string[] _validTypes = { "read_memos", "add_memo", "edit_memo", "update_memo" };
     private readonly string[] _validGetTypes = { "memos", "resources" };
@@ -84,6 +85,46 @@ public class UseMemosCommand: CommandBase<ServiceRequest,ServiceConfig>
 
     private async Task<object> AddMemo(ServiceRequest serviceRequest, ServiceConfig config)
     {
+        if (string.IsNullOrWhiteSpace(serviceRequest.ConfirmationId))
+        {
+            var confirmation = new Confirmation
+            {
+                ConfirmationMessage = "Are you sure you want to add this memo?",
+                Content = serviceRequest.Content,
+                Options = new Dictionary<string, bool>
+                {
+                    { "Yes", true },
+                    { "No", false }
+                },
+                Id = Guid.NewGuid()
+            };
+            serviceRequest.ConfirmationId = confirmation.Id.ToString();
+            var confirmationRequest = await NotificationService.RequestConfirmation(Name, confirmation, serviceRequest);
+            var isSuccessful = (bool?)confirmationRequest.GetType().GetProperty("Success")?.GetValue(confirmationRequest) ?? false;
+            if (isSuccessful)
+            {
+                return new
+                {
+                    Success = true,
+                    ConfirmationId = confirmation.Id.ToString()
+                };    
+            }
+                    
+            return new
+            {
+                Success = false
+            };
+        }
+
+        if (!NotificationService.DoesConfirmationExist(Guid.Parse(serviceRequest.ConfirmationId), out _))
+        {
+            return new
+            {
+                Success = false,
+                Error = "Unable to add memo without valid confirmation"
+            };
+        }
+        
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.MemoAccount.ApiKey);
 

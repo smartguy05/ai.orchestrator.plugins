@@ -13,11 +13,11 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
 {
     public override string Name => "Ai.Orchestrator.Plugins.Telegram";
     public override string Description => "A plugin to send and receive telegram messages";
-    protected override IConfirmationService ConfirmationService { get; set; }
+    protected override INotificationService NotificationService { get; set; }
     private static TelegramService _service;
     private static TelegramBotClient _botClient;
     private static ServiceConfig _config;
-    private static IConfirmationService _staticConfirmationService;
+    private static INotificationService _staticConfirmationService;
 
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
     {
@@ -29,15 +29,15 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
             serviceRequest.ChatId = config.NotificationChatId;
         }
 
-        _service = await GetTelegramService(config, ConfirmationService, Log);
+        _service = GetTelegramService(config, NotificationService, Log);
 
         return await _service.SendMessage(serviceRequest.MessageText, serviceRequest.ChatId);
     }
 
-    public override async Task<object> Initialize(string configString, LogDelegate log, IConfirmationService confirmationService)
+    public override async Task<object> Initialize(string configString, LogDelegate log, INotificationService notificationService)
     {
-        ConfirmationService ??= confirmationService;
-        _staticConfirmationService = confirmationService;
+        NotificationService ??= notificationService;
+        _staticConfirmationService = notificationService;
         await log(LogLevel.Info, "Initializing Telegram");
         try
         {
@@ -46,7 +46,7 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
             _botClient ??= new TelegramBotClient(config.BotToken);
             var clientUpdates = await _botClient.GetUpdates();
 
-            _service = await GetTelegramService(config, confirmationService, log);
+            _service = GetTelegramService(config, notificationService, log);
             // _service = new TelegramService(_botClient, log, config, _confirmationService, Confirm);
 
             return _service.ListenForMessages(clientUpdates.ToList());
@@ -58,14 +58,14 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
         }
     }
 
-    private async  Task<TelegramService> GetTelegramService(ServiceConfig config, IConfirmationService confirmationService, LogDelegate log)
+    private TelegramService GetTelegramService(ServiceConfig config, INotificationService notificationService, LogDelegate log)
     {
         _config ??= config;
         _botClient ??= new TelegramBotClient(config.BotToken);
         log ??= Log;
-        ConfirmationService ??= confirmationService;
+        NotificationService ??= notificationService;
 
-        return new TelegramService(_botClient, log, config, confirmationService, Confirm);
+        return new TelegramService(_botClient, log, config, notificationService, Confirm);
     }
     
     public Task<object> RequestConfirmation(Confirmation confirmation, OrchestratorRequest request)
@@ -82,11 +82,11 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
         }
         
         TelegramService.PendingConfirmation = confirmation;
-        _service ??= new TelegramService(_botClient, Log, _config, ConfirmationService, Confirm);
+        _service ??= new TelegramService(_botClient, Log, _config, NotificationService, Confirm);
         return _service.SendMessage(
             GetConfirmationMessage(confirmation), 
             _config.NotificationChatId, 
-            confirmation.Options.Select(s => s.Key).ToArray()
+            confirmation.Options?.Select(s => s.Key).ToArray() ?? []
             );
     }
 
@@ -105,6 +105,10 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
 
     private string GetConfirmationMessage(Confirmation confirmation)
     {
+        if (confirmation.Content is null)
+        {
+            return confirmation.ConfirmationMessage;
+        }
         var content = confirmation.Content;
         if (Regex.IsMatch(content, @".*<html>.+</html>.*", RegexOptions.Singleline))
         {

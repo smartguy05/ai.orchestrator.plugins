@@ -1,6 +1,49 @@
 # Ai.Orchestrator.Plugins
 Plugins created to be used with Ai Orchestrator
 
+---
+
+## 🚧 Future Work
+
+Planned enhancements include:
+- **Telnyx Integration**: A plugin for SMS, voice, and communications via Telnyx.
+- Additional external integrations and automation plugins.
+- Improved configuration and extensibility for plugin management.
+
+---
+
+## Available Plugins
+
+This repository currently includes plugins for integrating external services and enhancing AI Orchestrator workflows. The available plugins are:
+
+- **Ai.Orchestrator.Plugins.UseMemos**  
+  Memo-style storage and retrieval for textual or structured data within orchestrator flows. [Details](./Ai.Orchestrator.Plugins.UseMemos/README.md)
+
+- **Ai.Orchestrator.Plugins.GoogleCalendar**  
+  Integrates Google Calendar for creating, updating, and retrieving events via orchestrator logic. [Details](./Ai.Orchestrator.Plugins.GoogleCalendar/README.md)
+
+- **Ai.Orchestrator.Plugins.SupportChannelKb**  
+  (See plugin directory for support channel knowledge base integration.)
+
+- **Ai.Orchestrator.Plugins.WebSearch**  
+  Enables web search via Kagi or Google Custom Search API. [Details](./Ai.Orchestrator.Plugins.WebSearch/README.md)
+
+- **Ai.Orchestrator.Plugins.PythonRunner**  
+  Run Python scripts or automation tasks from orchestrator workflows.
+
+- **Ai.Orchestrator.Plugins.HomeAssistantAssist**  
+  Integrate with Home Assistant for smart home automation.
+
+- **Ai.Orchestrator.Plugins.Telegram**  
+  Send and receive Telegram messages as part of your orchestration logic.
+
+- **Ai.Orchestrator.Logging.FileLogger**  
+  File-based logging plugin for AI Orchestrator events and flows.
+
+> For plugin-specific usage and configuration instructions, see each plugin’s directory and README file.
+
+---
+
 # ICommand
 
 # Config files
@@ -39,3 +82,32 @@ Plugins created to be used with Ai Orchestrator
   </Reference>
 </ItemGroup>
 ```
+
+---
+
+## Getting Started
+
+Clone the repository and add the desired plugin(s) to your AI Orchestrator solution:
+
+```bash
+git clone https://github.com/smartguy05/ai.orchestrator.plugins.git
+cd ai.orchestrator.plugins
+```
+
+Each plugin’s folder contains its own README with installation, configuration, and usage instructions.
+
+---
+
+## Contributing
+
+We welcome contributions! For new plugins, improvements, or bug reports, open an issue or pull request. See plugin documentation for guidelines.
+
+---
+
+## License
+
+MIT License. See [LICENSE](./LICENSE).
+
+---
+
+_Note: Some search results are limited. For more plugin details, see the [GitHub repository](https://github.com/smartguy05/ai.orchestrator.plugins)._ 

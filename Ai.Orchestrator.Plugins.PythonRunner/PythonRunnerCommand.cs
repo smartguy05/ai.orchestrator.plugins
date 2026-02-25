@@ -1,5 +1,9 @@
-﻿using System.Diagnostics;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Extensions;
+using Ai.Orchestrator.Models.Helpers;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.PythonRunner.Models;
@@ -12,13 +16,25 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override string Description => "A plugin to run a python script";
     protected override INotificationService NotificationService { get; set; }
 
+    public override List<ToolCall> GetToolDefinitions()
+    {
+        return this.GetServiceToolCalls();
+    }
+
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    {
+        return await this.ProcessRequest(serviceRequest, config, NotificationService);
+    }
+
+    [Display(Name = "run_python_script")]
+    [Description("Executes a Python script and returns the output. The script is written to a temporary file, executed, and the file is cleaned up afterward.")]
+    [Parameters("""{"type":"object","properties":{"pythonScript":{"type":"string","description":"The Python script code to execute"}},"required":["pythonScript"]}""")]
+    public async Task<object> RunPythonScriptTool(ServiceConfig config, ServiceRequest serviceRequest)
     {
         var tempFile = Path.GetTempFileName() + ".py";
 
         try
         {
-            // Write the Python script to the temporary file
             await File.WriteAllTextAsync(tempFile, serviceRequest.PythonScript);
             return await RunPythonScript(tempFile);
         }
@@ -35,11 +51,9 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
             }
         }
     }
-    
+
     private async Task<object> RunPythonScript(string tempFile)
     {
-        // Setup the process start info to run the Python interpreter.
-        // Use Python's subprocess to validate script syntax
         var start = new ProcessStartInfo
         {
             FileName = "python",
@@ -60,14 +74,12 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
             {
                 throw new Exception("Could not start python script");
             }
-            
-            // Read the standard output and error.
+
             output = await process.StandardOutput.ReadToEndAsync();
             var error = await process.StandardError.ReadToEndAsync();
-                
+
             await process.WaitForExitAsync();
 
-            // Output the results.
             await Log(LogLevel.Info, $"Output: {output}");
 
             if (!string.IsNullOrWhiteSpace(error))
@@ -83,7 +95,7 @@ public class PythonRunnerCommand: CommandBase<ServiceRequest, ServiceConfig>
             await Log(LogLevel.Error, "An error occurred while running the Python script:", ex);
             return new { Success = false, Error = ex.Message };
         }
-        
+
         return new { Success = true, Result = output };
     }
 }

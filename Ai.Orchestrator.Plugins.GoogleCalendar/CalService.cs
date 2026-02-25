@@ -1,7 +1,10 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Reflection;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Helpers;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Exceptions;
 using Ai.Orchestrator.Plugins.GoogleCalendar.Models;
@@ -356,5 +359,71 @@ public class CalService
         {
             throw new Exception($"Error fetching events: {ex.Message}");
         }
+    }
+
+    // --- Annotated wrapper methods for tool definition scanning ---
+
+    [Display(Name = "get_calendar_events")]
+    [Description("Retrieves all events from a Google Calendar. Optionally specify a calendarId, defaults to primary calendar.")]
+    [Parameters("""{"type":"object","properties":{"calendarId":{"type":"string","description":"The calendar ID to retrieve events from. Defaults to 'primary'."}},"required":[]}""")]
+    public async Task<object> GetCalendarEvents(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetEvents(request);
+    }
+
+    [Display(Name = "get_calendar_event")]
+    [Description("Retrieves a specific event from a Google Calendar by its event ID.")]
+    [Parameters("""{"type":"object","properties":{"eventId":{"type":"string","description":"The ID of the event to retrieve"},"calendarId":{"type":"string","description":"The calendar ID. Defaults to 'primary'."}},"required":["eventId"]}""")]
+    public async Task<object> GetCalendarEvent(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetEvent(request);
+    }
+
+    [Display(Name = "edit_calendar_event")]
+    [Description("Edits an existing event on a Google Calendar. Requires the event ID and new summary.")]
+    [Parameters("""{"type":"object","properties":{"eventId":{"type":"string","description":"The ID of the event to edit"},"summary":{"type":"string","description":"The new summary/title for the event"},"calendarId":{"type":"string","description":"The calendar ID. Defaults to 'primary'."}},"required":["eventId","summary"]}""")]
+    public async Task<object> EditCalendarEvent(ServiceConfig config, ServiceRequest request)
+    {
+        return await EditEvent(request);
+    }
+
+    [Display(Name = "get_calendar_events_for_day")]
+    [Description("Retrieves all events across all calendars for a specific date. Optionally specify a calendarId to filter to one calendar.")]
+    [Parameters("""{"type":"object","properties":{"date":{"type":"string","description":"The date to retrieve events for in yyyy-MM-dd format"},"calendarId":{"type":"string","description":"Optional calendar ID to filter events to a specific calendar"}},"required":["date"]}""")]
+    public async Task<object> GetCalendarEventsForDay(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetEventsForDay(request);
+    }
+
+    [Display(Name = "get_calendar_events_for_range")]
+    [Description("Retrieves all events across all calendars for a date range.")]
+    [Parameters("""{"type":"object","properties":{"startDate":{"type":"string","description":"The start date of the range in yyyy-MM-dd format"},"endDate":{"type":"string","description":"The end date of the range in yyyy-MM-dd format"}},"required":["startDate","endDate"]}""")]
+    public async Task<object> GetCalendarEventsForRange(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetEventsForDateRange(request);
+    }
+
+    [Display(Name = "get_calendars")]
+    [Description("Retrieves a list of all available Google Calendars for the authenticated user.")]
+    [Parameters("""{"type":"object","properties":{},"required":[]}""")]
+    public async Task<object> GetAllCalendars(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetCalendars(request);
+    }
+
+    [Display(Name = "get_calendar")]
+    [Description("Retrieves details of a specific Google Calendar by its calendar ID.")]
+    [Parameters("""{"type":"object","properties":{"calendarId":{"type":"string","description":"The calendar ID to retrieve. Defaults to 'primary'."}},"required":[]}""")]
+    public async Task<object> GetSingleCalendar(ServiceConfig config, ServiceRequest request)
+    {
+        return await GetCalendar(request);
+    }
+
+    [Display(Name = "add_calendar_event")]
+    [Description("Creates a new event on a Google Calendar with summary, start/end times, location, attendees, and reminders.")]
+    [Parameters("""{"type":"object","properties":{"summary":{"type":"string","description":"The title/summary of the event"},"startDate":{"type":"string","description":"The start date and time of the event"},"endDate":{"type":"string","description":"The end date and time of the event"},"calendarId":{"type":"string","description":"The calendar ID. Defaults to 'primary'."},"location":{"type":"string","description":"The location of the event"},"description":{"type":"string","description":"A description of the event"},"attendees":{"type":"array","description":"List of attendees","items":{"type":"object","properties":{"email":{"type":"string"},"displayName":{"type":"string"}}}}},"required":["summary","startDate","endDate"]}""")]
+    public async Task<object> AddCalendarEvent(ServiceConfig config, ServiceRequest request)
+    {
+        return await AddEvent(request);
     }
 }

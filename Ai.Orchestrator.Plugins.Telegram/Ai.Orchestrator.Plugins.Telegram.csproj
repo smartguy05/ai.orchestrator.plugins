@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 	</PropertyGroup>
@@ -12,17 +12,17 @@
 	</PropertyGroup>
 
 	<PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-	  <OutputPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net8.0\Plugins\</OutputPath>
+	  <OutputPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net9.0\Plugins\</OutputPath>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<Reference Include="Ai.Orchestrator.Services">
-			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net8.0\Ai.Orchestrator.Services.dll</HintPath>
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net9.0\Ai.Orchestrator.Services.dll</HintPath>
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>
 		<Reference Include="Ai.Orchestrator.Models">
-			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net8.0\Ai.Orchestrator.Models.dll</HintPath>
+			<HintPath>..\..\ai.orchestrator\Ai.Orchestrator\bin\Debug\net9.0\Ai.Orchestrator.Models.dll</HintPath>
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</Reference>

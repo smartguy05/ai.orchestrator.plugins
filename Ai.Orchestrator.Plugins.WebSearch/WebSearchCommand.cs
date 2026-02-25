@@ -1,6 +1,10 @@
-﻿using System.Net.Http.Headers;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Extensions;
+using Ai.Orchestrator.Models.Helpers;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.WebSearch.Models;
@@ -13,7 +17,20 @@ public class WebSearchCommand: CommandBase<ServiceRequest, ServiceConfig>
     public override string Description => "A plugin to allow searching the web";
     protected override INotificationService NotificationService { get; set; }
 
+    public override List<ToolCall> GetToolDefinitions()
+    {
+        return this.GetServiceToolCalls();
+    }
+
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    {
+        return await this.ProcessRequest(serviceRequest, config, NotificationService);
+    }
+
+    [Display(Name = "web_search")]
+    [Description("Searches the web for information using the configured search engine and returns results.")]
+    [Parameters("""{"type":"object","properties":{"query":{"type":"string","description":"The search query to look up on the web"},"maxResults":{"type":"integer","description":"Maximum number of results to return. Defaults to 5."}},"required":["query"]}""")]
+    public async Task<object> WebSearch(ServiceConfig config, ServiceRequest serviceRequest)
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.Accept.Add(

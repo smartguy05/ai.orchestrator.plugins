@@ -1,15 +1,18 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using Ai.Orchestrator.Models;
 using Ai.Orchestrator.Models.Enums;
+using Ai.Orchestrator.Models.Extensions;
+using Ai.Orchestrator.Models.Helpers;
 using Ai.Orchestrator.Models.Interfaces;
 using Ai.Orchestrator.Models.Tools;
 using Ai.Orchestrator.Plugins.Telegram.Models;
-using Ai.Orchestrator.Models.Extensions;
 using Telegram.Bot;
 
 namespace Ai.Orchestrator.Plugins.Telegram;
 
-public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfirmationPlugin
+public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, INotificationPlugin
 {
     public override string Name => "Ai.Orchestrator.Plugins.Telegram";
     public override string Description => "A plugin to send and receive telegram messages";
@@ -19,7 +22,20 @@ public class TelegramCommand: CommandBase<ServiceRequest, ServiceConfig>, IConfi
     private static ServiceConfig _config;
     private static INotificationService _staticConfirmationService;
 
+    public override List<ToolCall> GetToolDefinitions()
+    {
+        return this.GetServiceToolCalls();
+    }
+
     protected override async Task<object> DoWork(ServiceRequest serviceRequest, ServiceConfig config, IEnumerable<ToolCall> availableToolCalls)
+    {
+        return await this.ProcessRequest(serviceRequest, config, NotificationService);
+    }
+
+    [Display(Name = "send_telegram_message")]
+    [Description("Sends a message via Telegram to a specified chat. If no chat ID is provided, uses the configured notification chat ID.")]
+    [Parameters("""{"type":"object","properties":{"messageText":{"type":"string","description":"The message text to send"},"chatId":{"type":"string","description":"The Telegram chat ID to send the message to. Optional, defaults to configured notification chat."}},"required":["messageText"]}""")]
+    public async Task<object> SendTelegramMessage(ServiceConfig config, ServiceRequest serviceRequest)
     {
         if (string.IsNullOrEmpty(config.BotToken))
             throw new ArgumentException("Bot token is required");
